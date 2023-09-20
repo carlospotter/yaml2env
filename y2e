@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Output .env file
+output_env=".env"
+
+# Variable to track indentation level of the 'data' field
+data_indent=""
+
+# Loop through all YAML files in the directory
+for yaml_file in *.yaml; do
+  if [ -e "$yaml_file" ]; then
+    echo "# $(basename "$yaml_file" .yaml)" >> "$output_env"
+    echo "Processing '$yaml_file'..."
+
+    # Variable to track whether we are inside the 'data' field
+    in_data=false
+
+    # Read the file line by line
+    while IFS= read -r line; do
+      # Check if the line starts with whitespace or tab (or is empty)
+      if [[ "$line" =~ ^[[:space:]]*$ ]]; then
+        # Skip empty lines or lines with only whitespace
+        continue
+      fi
+
+      # Check if the line starts with the 'data' field
+      if [[ "$line" =~ ^[[:space:]]*data: ]]; then
+        in_data=true
+        data_indent="$(expr "$line" : '[[:space:]]*')"
+        continue
+      fi
+
+      # If we are inside the 'data' field
+      if [ "$in_data" == true ]; then
+        # Check if the line has the same or more indentation as the 'data' field
+        line_indent="$(expr "$line" : '[[:space:]]*')"
+        if [[ "$line_indent" -le "$data_indent" ]]; then
+          # Exit the 'data' field when indentation decreases
+          in_data=false
+        else
+          field_name=$(echo "$line" | awk -F':' '{print $1}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+          field_value=$(echo "$line" | awk -F':' '{$1=""; print $0}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+
+          # Append the subfield to the .env file
+          
+          echo "export ${field_name}=${field_value}" >> "$output_env"
+        fi
+      fi
+    done < "$yaml_file"
+
+    echo "All subfields from '$yaml_file' have been appended to '$output_env'."
+  fi
+done
+
+echo "Extraction complete. Results are stored in '$output_env'."
