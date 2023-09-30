@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Output .env file
-output_env=".env"
+output_env="new.env"
 
 # Variable to track indentation level of the 'data' field
 data_indent=""
